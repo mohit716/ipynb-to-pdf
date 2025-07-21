@@ -2,44 +2,35 @@ import streamlit as st
 import subprocess
 import uuid
 import os
-from xhtml2pdf import pisa
 
 st.title("📄 IPYNB to PDF Converter")
 
 uploaded_file = st.file_uploader("Upload a `.ipynb` file", type="ipynb")
 
 if uploaded_file:
-    ipynb_filename = f"{uuid.uuid4()}.ipynb"
-    html_filename = ipynb_filename.replace(".ipynb", ".html")
-    pdf_filename = ipynb_filename.replace(".ipynb", ".pdf")
-
-    with open(ipynb_filename, "wb") as f:
+    # Save the uploaded file with a random name
+    input_filename = f"{uuid.uuid4()}.ipynb"
+    with open(input_filename, "wb") as f:
         f.write(uploaded_file.read())
 
+    # Define the output filename
+    output_filename = input_filename.replace(".ipynb", ".pdf")
+
     try:
-        st.info("🔄 Converting notebook to HTML...")
-        subprocess.run(["jupyter", "nbconvert", "--to", "html", ipynb_filename], check=True)
-
-        st.info("📄 Converting HTML to PDF using xhtml2pdf...")
-
-        with open(html_filename, "r", encoding="utf-8") as html_file:
-            source_html = html_file.read()
-
-        with open(pdf_filename, "wb") as pdf_file:
-            pisa_status = pisa.CreatePDF(source_html, dest=pdf_file)
-
-        if pisa_status.err:
-            st.error("❌ PDF conversion failed.")
-        else:
-            with open(pdf_filename, "rb") as f:
-                st.success("✅ Conversion complete!")
-                st.download_button("⬇ Download PDF", f, file_name=pdf_filename)
-
+        st.info("🚀 Converting to PDF (using webpdf)...")
+        subprocess.run(
+            ["jupyter", "nbconvert", "--to", "webpdf", "--allow-chromium-download", input_filename],
+            check=True
+        )
+        # Show download button
+        with open(output_filename, "rb") as f:
+            st.success("✅ Conversion complete!")
+            st.download_button("⬇️ Download PDF", f, file_name="converted_notebook.pdf")
     except Exception as e:
-        st.error("❌ Conversion failed.")
-        st.text(f"Details: {e}")
-
+        st.error(f"❌ Conversion failed: {str(e)}")
     finally:
-        for f in [ipynb_filename, html_filename, pdf_filename]:
-            if os.path.exists(f):
-                os.remove(f)
+        # Clean up temp files
+        if os.path.exists(input_filename):
+            os.remove(input_filename)
+        if os.path.exists(output_filename):
+            os.remove(output_filename)
